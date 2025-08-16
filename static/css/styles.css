@@ -42,10 +42,18 @@ button {
     border: 1px solid #ddd;
     background: white;
     cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
 }
 
 button:hover {
     background: #f0f0f0;
+}
+
+button:disabled {
+    background: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
 }
 
 .btn-primary {
@@ -64,6 +72,20 @@ button:hover {
     border-color: #dc3545;
 }
 
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
 .hidden {
     display: none !important;
 }
@@ -73,6 +95,7 @@ button:hover {
     padding: 2rem;
     margin-bottom: 2rem;
     border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .auth-form {
@@ -96,6 +119,13 @@ input[type="number"], textarea, select {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 3px;
+    font-size: 14px;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,.25);
 }
 
 textarea {
@@ -114,10 +144,18 @@ textarea {
     padding: 1rem;
     border-radius: 5px;
     background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 .product-card h3 {
     margin-bottom: 0.5rem;
+    color: #333;
 }
 
 .product-card p {
@@ -139,6 +177,7 @@ textarea {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: white;
 }
 
 .cart-controls {
@@ -156,6 +195,7 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 1rem;
+    background: white;
 }
 
 th, td {
@@ -167,6 +207,11 @@ th, td {
 th {
     background-color: #f8f9fa;
     font-weight: bold;
+    color: #495057;
+}
+
+tr:hover {
+    background-color: #f8f9fa;
 }
 
 .tab-buttons {
@@ -182,21 +227,35 @@ th {
     border-bottom: 2px solid transparent;
     background: none;
     cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-button:hover {
+    background: #f8f9fa;
 }
 
 .tab-button.active {
     border-bottom-color: #007bff;
     background: #f8f9fa;
+    color: #007bff;
 }
 
 .error {
     color: #dc3545;
     margin: 10px 0;
+    padding: 8px;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
 }
 
 .success {
-    color: #28a745;
+    color: #155724;
     margin: 10px 0;
+    padding: 8px;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
 }
 
 .modal {
@@ -209,6 +268,7 @@ th {
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1000;
 }
 
 .modal-content {
@@ -217,9 +277,128 @@ th {
     border-radius: 5px;
     max-width: 500px;
     width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .user-info {
     color: #666;
     font-size: 0.9rem;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+/* Status styling */
+.status-pending {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.status-processing {
+    color: #007bff;
+    font-weight: bold;
+}
+
+.status-shipped {
+    color: #17a2b8;
+    font-weight: bold;
+}
+
+.status-delivered {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.status-cancelled {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Order details styling */
+.order-info {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.order-info p {
+    margin-bottom: 0.5rem;
+}
+
+.order-items {
+    margin-top: 1rem;
+}
+
+.order-items ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.order-items li {
+    background: #f8f9fa;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid #007bff;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .nav-buttons {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .nav-buttons button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .product-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .cart-item {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .cart-controls {
+        justify-content: center;
+    }
+    
+    table {
+        font-size: 12px;
+    }
+    
+    th, td {
+        padding: 8px 4px;
+    }
+    
+    .modal-content {
+        padding: 1rem;
+        width: 95%;
+    }
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: "Loading...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }

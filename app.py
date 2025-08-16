@@ -19,12 +19,12 @@ CORS(app, origins="*", supports_credentials=True)
 
 api = Api(app)
 
-# Register API Routes
+# Register API Routes with complete CRUD patterns
 api.add_resource(AuthResource, '/api/auth')
 api.add_resource(ProductsResource, '/api/products', '/api/products/<int:product_id>')
 api.add_resource(CartResource, '/api/cart', '/api/cart/<int:cart_id>')
-api.add_resource(OrdersResource, '/api/orders')
-api.add_resource(UsersResource, '/api/users')
+api.add_resource(OrdersResource, '/api/orders', '/api/orders/<int:order_id>')  # Added order_id route
+api.add_resource(UsersResource, '/api/users', '/api/users/<int:user_id>')      # Added user_id route
 
 # Register debug routes
 register_debug_routes(app)
@@ -34,4 +34,7 @@ if __name__ == '__main__':
     print("Starting Flask server...")
     print("Backend will be available at: http://localhost:5000")
     print("Make sure to access your HTML file through a local server, not file://")
+    print("\nNew CRUD endpoints available:")
+    print("- GET/PUT/DELETE /api/orders/<id> - View/Update/Cancel specific orders")
+    print("- GET/POST/PUT/DELETE /api/users/<id> - Complete user management")
     app.run(debug=True, host='0.0.0.0', port=5000)
