@@ -1,9 +1,9 @@
-FLASKRESTFUL STORE
+#FLASKRESTFUL STORE
 
 
 A full-featured ecommerce web application built with Flask REST API backend and vanilla JavaScript frontend, featuring user authentication, shopping cart functionality, order management, and comprehensive admin controls.
 Features
-🛍️ Customer Features
+#Customer Features
 
 User Registration & Authentication - Secure user registration and login system
 Product Browsing - Browse products with search, filtering, and sorting capabilities
@@ -11,7 +11,7 @@ Shopping Cart - Add, update, and remove items from cart
 Order Management - Place orders, view order history, and track order status
 Product Search & Filters - Search by name, filter by category/brand, price range, and featured products
 
-👨‍💼 Admin Features
+# Admin Features
 
 Product Management - Add, edit, delete products with detailed information
 Order Management - View all orders, update order status, cancel orders
@@ -19,7 +19,7 @@ User Management - View all users, create new users, manage user roles
 Dashboard Analytics - View statistics for products, orders, and users
 Advanced Admin Controls - Complete CRUD operations for all entities
 
-🔧 Technical Features
+# Technical Features
 
 RESTful API - Clean API design with proper HTTP methods
 Session-based Authentication - Secure session management
@@ -28,22 +28,22 @@ Real-time Cart Updates - Dynamic cart count and total updates
 Responsive Design - Works on desktop and mobile devices
 Error Handling - Comprehensive error handling and user feedback
 
-Technology Stack
-Backend
+#Technology Stack
+#Backend
 
 Flask - Python web framework
 Flask-RESTful - REST API extension for Flask
 Flask-CORS - Cross-Origin Resource Sharing support
 SQLite - Lightweight database for data persistence
 
-Frontend
+#Frontend
 
 HTML5 - Modern semantic markup
 CSS3 - Responsive styling with modern features
 Vanilla JavaScript - No frameworks, pure JavaScript for functionality
 AJAX/Fetch API - Asynchronous communication with backend
 
-Installation & Setup
+# Installation & Setup
 Prerequisites
 
 
@@ -83,13 +83,13 @@ For testing purposes, a default admin account is created:
 
 
 
-Username: admin
-Password: admin123
+# Username: admin
+# Password: admin123
 
 
 
 
-For Customers
+#For Customers
 
 Registration/Login
 
@@ -147,7 +147,7 @@ Delete user accounts
 
 
 
-API Endpoints
+# API Endpoints
 Authentication
 
 POST /api/auth - Login, register, logout, check authentication status
