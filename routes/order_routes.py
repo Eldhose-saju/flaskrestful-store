@@ -13,9 +13,10 @@ class OrdersResource(Resource):
                 return {'message': 'Login required'}, 401
             
             conn = get_db_connection()
+            products_conn = get_products_db_connection()
             
             if order_id:
-                # Get specific order with items
+                # Get specific order with items - FIXED QUERY
                 if session.get('is_admin'):
                     # Admin can view any order
                     order = conn.execute('''
@@ -26,27 +27,61 @@ class OrdersResource(Resource):
                     ''', (order_id,)).fetchone()
                 else:
                     # Regular user can only view their own orders
-                    order = conn.execute(
-                        'SELECT * FROM orders WHERE id = ? AND user_id = ?',
-                        (order_id, session['user_id'])
-                    ).fetchone()
+                    order = conn.execute('''
+                        SELECT o.*, u.username
+                        FROM orders o
+                        JOIN users u ON o.user_id = u.id
+                        WHERE o.id = ? AND o.user_id = ?
+                    ''', (order_id, session['user_id'])).fetchone()
                 
                 if not order:
                     conn.close()
+                    products_conn.close()
                     return {'message': 'Order not found'}, 404
                 
-                # Get order items with product details
+                # Get order items with product details - FIXED to get from products database
+                print(f"Fetching order items for order {order_id}")
                 order_items = conn.execute('''
-                    SELECT oi.*, p.name as product_name
+                    SELECT oi.*, oi.product_id
                     FROM order_items oi
-                    LEFT JOIN products p ON oi.product_id = p.id
                     WHERE oi.order_id = ?
                 ''', (order_id,)).fetchall()
                 
+                print(f"Found {len(order_items)} order items")
+                
+                # Enhance order items with product details from products database
+                enhanced_items = []
+                for item in order_items:
+                    item_dict = dict(item)
+                    
+                    # Get product details from products database
+                    product = products_conn.execute(
+                        'SELECT name, description, category, brand FROM products WHERE id = ?',
+                        (item['product_id'],)
+                    ).fetchone()
+                    
+                    if product:
+                        item_dict['product_name'] = product['name']
+                        item_dict['name'] = product['name']  # For compatibility
+                        item_dict['product_category'] = product['category']
+                        item_dict['product_brand'] = product['brand']
+                        print(f"  - Found product: {product['name']}")
+                    else:
+                        item_dict['product_name'] = f'Product #{item["product_id"]} (Deleted)'
+                        item_dict['name'] = item_dict['product_name']
+                        item_dict['product_category'] = 'Unknown'
+                        item_dict['product_brand'] = 'Unknown'
+                        print(f"  - Product {item['product_id']} not found")
+                    
+                    enhanced_items.append(item_dict)
+                
                 conn.close()
+                products_conn.close()
                 
                 order_dict = dict(order)
-                order_dict['items'] = [dict(item) for item in order_items]
+                order_dict['items'] = enhanced_items
+                
+                print(f"Returning order details with {len(enhanced_items)} items")
                 return order_dict
             
             else:
@@ -61,12 +96,15 @@ class OrdersResource(Resource):
                     ''').fetchall()
                 else:
                     print(f"Regular user - fetching orders for user_id: {session['user_id']}")
-                    orders = conn.execute(
-                        'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC',
-                        (session['user_id'],)
-                    ).fetchall()
+                    orders = conn.execute('''
+                        SELECT o.*, u.username
+                        FROM orders o
+                        JOIN users u ON o.user_id = u.id
+                        WHERE o.user_id = ? ORDER BY o.created_at DESC
+                    ''', (session['user_id'],)).fetchall()
                 
                 conn.close()
+                products_conn.close()
                 result = [dict(order) for order in orders]
                 print(f"Found {len(result)} orders")
                 return result
@@ -74,7 +112,12 @@ class OrdersResource(Resource):
         except Exception as e:
             print(f"Error in orders GET: {e}")
             print(f"Traceback: {traceback.format_exc()}")
-            return {'success': False, 'message': 'Server error'}, 500
+            try:
+                conn.close()
+                products_conn.close()
+            except:
+                pass
+            return {'success': False, 'message': f'Server error: {str(e)}'}, 500
     
     def post(self):
         try:

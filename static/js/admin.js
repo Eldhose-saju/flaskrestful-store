@@ -1131,3 +1131,252 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+// Fixed Admin Orders View Function - add this to your admin.js file
+
+async function viewOrderDetails(orderId) {
+    console.log('Admin viewing order details:', orderId);
+    
+    if (!orderId) {
+        console.error('Invalid order ID:', orderId);
+        alert('Invalid order ID');
+        return;
+    }
+    
+    try {
+        console.log(`Making API call to /orders/${orderId} for admin view...`);
+        const order = await apiCall(`/orders/${orderId}`);
+        console.log('Admin order details received:', order);
+        
+        if (!order) {
+            throw new Error('No order data received');
+        }
+        
+        showOrderDetailsModal(order);
+        
+    } catch (error) {
+        console.error('Error fetching order details:', error);
+        let errorMessage = 'Error loading order details.';
+        
+        if (error.message && error.message.includes('404')) {
+            errorMessage = 'Order not found.';
+        } else if (error.message && error.message.includes('401')) {
+            errorMessage = 'Authentication required. Please log in again.';
+        } else if (error.message && (error.message.includes('network') || error.message.includes('fetch'))) {
+            errorMessage = 'Network connection error. Please check your connection and try again.';
+        }
+        
+        alert(errorMessage + '\n\nTechnical details: ' + error.message);
+    }
+}
+
+function showOrderDetailsModal(order) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('order-details-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'order-details-modal';
+    modal.className = 'modal';
+    
+    try {
+        const orderDate = new Date(order.created_at).toLocaleString();
+        const customerName = order.username || 'Unknown Customer';
+        const totalAmount = parseFloat(order.total_amount || 0).toFixed(2);
+        const statusClass = `status-${order.status}`;
+        const statusText = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown';
+        
+        let itemsHtml = '<div class="order-items-section"><h4>Order Items:</h4>';
+        
+        if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+            console.log(`Order has ${order.items.length} items`);
+            itemsHtml += '<div class="order-items-table-container">';
+            itemsHtml += '<table class="order-items-table">';
+            itemsHtml += '<thead><tr><th>Product</th><th>Category</th><th>Quantity</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>';
+            
+            order.items.forEach((item, index) => {
+                try {
+                    console.log(`Processing admin item ${index + 1}:`, item);
+                    
+                    const productName = item.product_name || item.name || `Product #${item.product_id || 'unknown'}`;
+                    const category = item.product_category || 'Unknown';
+                    const quantity = parseInt(item.quantity || 0);
+                    const unitPrice = parseFloat(item.price || 0);
+                    const itemTotal = quantity * unitPrice;
+                    
+                    itemsHtml += `
+                        <tr class="order-item-row">
+                            <td class="item-product">
+                                <strong>${escapeHtml(productName)}</strong>
+                                ${item.product_brand ? `<br><small>Brand: ${escapeHtml(item.product_brand)}</small>` : ''}
+                                <br><small>Product ID: ${item.product_id}</small>
+                            </td>
+                            <td class="item-category">${escapeHtml(category)}</td>
+                            <td class="item-quantity">${quantity}</td>
+                            <td class="item-price">$${unitPrice.toFixed(2)}</td>
+                            <td class="item-total">$${itemTotal.toFixed(2)}</td>
+                        </tr>
+                    `;
+                } catch (itemError) {
+                    console.error(`Error processing admin item ${index + 1}:`, itemError, item);
+                    itemsHtml += `
+                        <tr class="order-item-row error-item">
+                            <td colspan="5" class="error">Error displaying item: ${itemError.message}</td>
+                        </tr>
+                    `;
+                }
+            });
+            itemsHtml += '</tbody></table></div>';
+        } else {
+            console.warn('No items found for this order in admin view');
+            itemsHtml += '<div class="no-items">No items found for this order</div>';
+        }
+        itemsHtml += '</div>';
+        
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="closeOrderDetailsModal()"></div>
+            <div class="modal-content order-details-modal">
+                <div class="modal-header">
+                    <h3>Order Details #${order.id}</h3>
+                    <button class="modal-close" onclick="closeOrderDetailsModal()" title="Close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="order-summary">
+                        <div class="order-info-grid">
+                            <div class="info-item">
+                                <label>Order ID:</label>
+                                <span>#${order.id}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Customer:</label>
+                                <span>${escapeHtml(customerName)}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Customer ID:</label>
+                                <span>${order.user_id}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Order Date:</label>
+                                <span>${orderDate}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Status:</label>
+                                <span class="status-badge ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Total Amount:</label>
+                                <span class="order-total-amount">$${totalAmount}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${itemsHtml}
+                </div>
+                <div class="modal-footer">
+                    <button onclick="closeOrderDetailsModal()" class="btn-secondary">Close</button>
+                    ${order.status === 'pending' ? 
+                        `<button onclick="cancelOrderFromModal(${order.id})" class="btn-danger">Cancel Order</button>` : 
+                        ''
+                    }
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add escape key listener
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeOrderDetailsModal();
+            }
+        };
+        
+        document.addEventListener('keydown', handleEscape);
+        modal.handleEscape = handleEscape; // Store reference for cleanup
+        
+        console.log('Admin order details modal displayed successfully');
+        
+    } catch (error) {
+        console.error('Error creating admin order modal:', error);
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="closeOrderDetailsModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Error Loading Order</h3>
+                    <button class="modal-close" onclick="closeOrderDetailsModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="error">
+                        <h4>Failed to display order details</h4>
+                        <p>Error: ${error.message}</p>
+                        <p>Please try refreshing the page or contact support if the problem persists.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button onclick="closeOrderDetailsModal()" class="btn-secondary">Close</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+}
+
+function closeOrderDetailsModal() {
+    const modal = document.getElementById('order-details-modal');
+    if (modal) {
+        if (modal.handleEscape) {
+            document.removeEventListener('keydown', modal.handleEscape);
+        }
+        modal.remove();
+        console.log('Admin order details modal closed');
+    }
+}
+
+// Helper function to escape HTML (if not already defined)
+if (typeof escapeHtml === 'undefined') {
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// Enhanced admin order debugging
+function debugAdminOrders() {
+    console.log('=== ADMIN ORDERS DEBUG INFO ===');
+    console.log('Current user:', currentUser);
+    console.log('Is admin:', currentUser?.is_admin);
+    console.log('Admin orders section:', document.getElementById('admin-orders'));
+    console.log('Admin orders list:', document.getElementById('admin-orders-list'));
+    
+    if (currentUser && currentUser.is_admin) {
+        console.log('Testing admin orders API...');
+        apiCall('/orders')
+            .then(orders => {
+                console.log('Admin orders API test successful:', orders);
+                console.log(`Found ${orders.length} total orders`);
+                
+                if (orders.length > 0) {
+                    const testOrderId = orders[0].id;
+                    console.log(`Testing order details with ID ${testOrderId}...`);
+                    return apiCall(`/orders/${testOrderId}`);
+                }
+            })
+            .then(orderDetails => {
+                if (orderDetails) {
+                    console.log('Admin order details test successful:', orderDetails);
+                    console.log('Order items:', orderDetails.items);
+                }
+            })
+            .catch(error => {
+                console.error('Admin orders API test failed:', error);
+            });
+    } else {
+        console.log('User is not admin - cannot test admin orders API');
+    }
+}
+
+// Make functions available globally
+window.debugAdminOrders = debugAdminOrders;
