@@ -1,6 +1,6 @@
 from flask import request, session
 from flask_restful import Resource
-from database.db_init import get_db_connection
+from database.db_init import get_db_connection, get_products_db_connection
 import traceback
 
 class OrdersResource(Resource):
@@ -78,100 +78,143 @@ class OrdersResource(Resource):
     
     def post(self):
         try:
+            print(f"=== STARTING CHECKOUT PROCESS ===")
             print(f"Orders POST - Session: {dict(session)}")
             
             if not session.get('user_id'):
-                print("No user_id in session for checkout")
+                print("ERROR: No user_id in session for checkout")
                 return {'success': False, 'message': 'Login required'}, 401
             
             user_id = session['user_id']
             print(f"Processing order for user_id: {user_id}")
             
+            # Connect to both databases
             conn = get_db_connection()
+            products_conn = get_products_db_connection()
             cursor = conn.cursor()
             
-            # Get cart items with detailed logging
-            print("Fetching cart items...")
-            cart_items = conn.execute('''
-                SELECT c.product_id, c.quantity, p.price, p.stock, p.name
-                FROM cart c
-                JOIN products p ON c.product_id = p.id
-                WHERE c.user_id = ?
-            ''', (user_id,)).fetchall()
-            
-            print(f"Found {len(cart_items)} items in cart")
-            for item in cart_items:
-                print(f"  - {item['name']}: qty={item['quantity']}, price=${item['price']}, stock={item['stock']}")
-            
-            if not cart_items:
-                conn.close()
-                print("Cart is empty - cannot checkout")
-                return {'success': False, 'message': 'Cart is empty'}, 400
-            
-            # Calculate total and check stock
-            total_amount = 0
-            print("Checking stock and calculating total...")
-            for item in cart_items:
-                if item['quantity'] > item['stock']:
-                    conn.close()
-                    error_msg = f'Insufficient stock for {item["name"]}. Available: {item["stock"]}, Requested: {item["quantity"]}'
-                    print(error_msg)
-                    return {'success': False, 'message': error_msg}, 400
+            try:
+                # Get cart items with detailed logging
+                print("Fetching cart items with products...")
+                cart_items = conn.execute('''
+                    SELECT c.id as cart_id, c.product_id, c.quantity, c.user_id
+                    FROM cart c
+                    WHERE c.user_id = ?
+                ''', (user_id,)).fetchall()
                 
-                item_total = item['quantity'] * item['price']
-                total_amount += item_total
-                print(f"  - {item['name']}: {item['quantity']} x ${item['price']} = ${item_total}")
-            
-            print(f"Total order amount: ${total_amount}")
-            
-            # Create order with default status 'pending'
-            print("Creating order...")
-            cursor.execute(
-                'INSERT INTO orders (user_id, total_amount, status) VALUES (?, ?, ?)',
-                (user_id, total_amount, 'pending')
-            )
-            order_id = cursor.lastrowid
-            print(f"Order created with ID: {order_id}")
-            
-            # Add order items and update stock
-            print("Adding order items and updating stock...")
-            for item in cart_items:
-                # Add to order_items
-                cursor.execute('''
-                    INSERT INTO order_items (order_id, product_id, quantity, price)
-                    VALUES (?, ?, ?, ?)
-                ''', (order_id, item['product_id'], item['quantity'], item['price']))
+                print(f"Found {len(cart_items)} raw cart items")
                 
-                # Update product stock
+                if not cart_items:
+                    print("ERROR: Cart is empty - cannot checkout")
+                    return {'success': False, 'message': 'Cart is empty'}, 400
+                
+                # Get product details and validate
+                validated_items = []
+                total_amount = 0
+                
+                for cart_item in cart_items:
+                    print(f"Processing cart item: {dict(cart_item)}")
+                    
+                    # Get product details from products database
+                    product = products_conn.execute(
+                        'SELECT * FROM products WHERE id = ?',
+                        (cart_item['product_id'],)
+                    ).fetchone()
+                    
+                    if not product:
+                        conn.close()
+                        products_conn.close()
+                        return {'success': False, 'message': f'Product {cart_item["product_id"]} not found'}, 400
+                    
+                    product_dict = dict(product)
+                    print(f"Product details: {product_dict['name']} - Price: ${product_dict['price']} - Stock: {product_dict['stock']}")
+                    
+                    # Validate stock
+                    if cart_item['quantity'] > product_dict['stock']:
+                        conn.close()
+                        products_conn.close()
+                        error_msg = f'Insufficient stock for {product_dict["name"]}. Available: {product_dict["stock"]}, Requested: {cart_item["quantity"]}'
+                        print(f"ERROR: {error_msg}")
+                        return {'success': False, 'message': error_msg}, 400
+                    
+                    # Calculate item total
+                    item_total = cart_item['quantity'] * product_dict['price']
+                    total_amount += item_total
+                    
+                    validated_items.append({
+                        'cart_id': cart_item['cart_id'],
+                        'product_id': cart_item['product_id'],
+                        'quantity': cart_item['quantity'],
+                        'price': product_dict['price'],
+                        'name': product_dict['name'],
+                        'subtotal': item_total
+                    })
+                    
+                    print(f"Validated: {product_dict['name']} - Qty: {cart_item['quantity']} x ${product_dict['price']} = ${item_total}")
+                
+                print(f"Total order amount: ${total_amount}")
+                print(f"Total items to order: {len(validated_items)}")
+                
+                # Create order
+                print("Creating order record...")
                 cursor.execute(
-                    'UPDATE products SET stock = stock - ? WHERE id = ?',
-                    (item['quantity'], item['product_id'])
+                    'INSERT INTO orders (user_id, total_amount, status, created_at) VALUES (?, ?, ?, datetime("now"))',
+                    (user_id, total_amount, 'pending')
                 )
+                order_id = cursor.lastrowid
+                print(f"Order created with ID: {order_id}")
                 
-                print(f"  - Added {item['name']} to order and reduced stock by {item['quantity']}")
-            
-            # Clear cart
-            print("Clearing cart...")
-            cursor.execute('DELETE FROM cart WHERE user_id = ?', (user_id,))
-            
-            # Commit all changes
-            conn.commit()
-            conn.close()
-            
-            print(f"Order {order_id} completed successfully!")
-            return {
-                'success': True, 
-                'order_id': order_id, 
-                'total_amount': total_amount,
-                'message': 'Order placed successfully'
-            }, 200
-            
+                # Process each validated item
+                print("Processing order items and updating stock...")
+                for item in validated_items:
+                    # Add to order_items table
+                    cursor.execute('''
+                        INSERT INTO order_items (order_id, product_id, quantity, price)
+                        VALUES (?, ?, ?, ?)
+                    ''', (order_id, item['product_id'], item['quantity'], item['price']))
+                    
+                    # Update product stock in products database
+                    products_conn.execute(
+                        'UPDATE products SET stock = stock - ?, updated_at = datetime("now") WHERE id = ?',
+                        (item['quantity'], item['product_id'])
+                    )
+                    
+                    print(f"Added {item['name']} to order items and reduced stock by {item['quantity']}")
+                
+                # Clear user's cart
+                print("Clearing user's cart...")
+                cursor.execute('DELETE FROM cart WHERE user_id = ?', (user_id,))
+                
+                # Commit all changes
+                print("Committing all database changes...")
+                conn.commit()
+                products_conn.commit()
+                
+                print(f"=== ORDER {order_id} COMPLETED SUCCESSFULLY ===")
+                print(f"Total amount: ${total_amount}")
+                print(f"Items ordered: {len(validated_items)}")
+                
+                return {
+                    'success': True, 
+                    'order_id': order_id, 
+                    'total_amount': float(total_amount),
+                    'message': 'Order placed successfully',
+                    'items_count': len(validated_items)
+                }, 200
+                
+            finally:
+                # Always close database connections
+                products_conn.close()
+                conn.close()
+                
         except Exception as e:
-            print(f"Error in orders POST: {e}")
+            print(f"CRITICAL ERROR in orders POST: {e}")
             print(f"Traceback: {traceback.format_exc()}")
             try:
                 conn.rollback()
+                products_conn.rollback()
                 conn.close()
+                products_conn.close()
             except:
                 pass
             return {'success': False, 'message': f'Server error: {str(e)}'}, 500
@@ -187,6 +230,7 @@ class OrdersResource(Resource):
                 return {'message': 'No data provided'}, 400
             
             conn = get_db_connection()
+            products_conn = get_products_db_connection()
             cursor = conn.cursor()
             
             # Check if order exists and get current status
@@ -202,6 +246,7 @@ class OrdersResource(Resource):
             
             if not order:
                 conn.close()
+                products_conn.close()
                 return {'message': 'Order not found'}, 404
             
             # Handle different update scenarios
@@ -215,11 +260,13 @@ class OrdersResource(Resource):
                     )
                     conn.commit()
                     conn.close()
+                    products_conn.close()
                     return {'success': True, 'message': 'Order status updated successfully'}
             else:
                 # Regular users can only cancel pending orders
                 if order['status'] != 'pending':
                     conn.close()
+                    products_conn.close()
                     return {'message': 'Can only cancel pending orders'}, 400
                 
                 # Cancel the order and restore stock
@@ -235,23 +282,28 @@ class OrdersResource(Resource):
                 ).fetchall()
                 
                 for item in order_items:
-                    cursor.execute(
+                    products_conn.execute(
                         'UPDATE products SET stock = stock + ? WHERE id = ?',
                         (item['quantity'], item['product_id'])
                     )
                 
                 conn.commit()
+                products_conn.commit()
                 conn.close()
+                products_conn.close()
                 return {'success': True, 'message': 'Order cancelled successfully'}
             
             conn.close()
+            products_conn.close()
             return {'message': 'Invalid update request'}, 400
             
         except Exception as e:
             print(f"Error in orders PUT: {e}")
             try:
                 conn.rollback()
+                products_conn.rollback()
                 conn.close()
+                products_conn.close()
             except:
                 pass
             return {'success': False, 'message': 'Server error'}, 500
@@ -263,6 +315,7 @@ class OrdersResource(Resource):
                 return {'message': 'Login required'}, 401
             
             conn = get_db_connection()
+            products_conn = get_products_db_connection()
             cursor = conn.cursor()
             
             # Check if order exists and permissions
@@ -278,6 +331,7 @@ class OrdersResource(Resource):
             
             if not order:
                 conn.close()
+                products_conn.close()
                 if session.get('is_admin'):
                     return {'message': 'Order not found'}, 404
                 else:
@@ -291,7 +345,7 @@ class OrdersResource(Resource):
             
             # Restore stock
             for item in order_items:
-                cursor.execute(
+                products_conn.execute(
                     'UPDATE products SET stock = stock + ? WHERE id = ?',
                     (item['quantity'], item['product_id'])
                 )
@@ -308,7 +362,9 @@ class OrdersResource(Resource):
                 )
             
             conn.commit()
+            products_conn.commit()
             conn.close()
+            products_conn.close()
             
             return {'success': True, 'message': 'Order cancelled successfully'}
             
@@ -316,7 +372,9 @@ class OrdersResource(Resource):
             print(f"Error in orders DELETE: {e}")
             try:
                 conn.rollback()
+                products_conn.rollback()
                 conn.close()
+                products_conn.close()
             except:
                 pass
             return {'success': False, 'message': 'Server error'}, 500

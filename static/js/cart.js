@@ -1,4 +1,6 @@
-// Cart Functions with Enhanced Error Handling
+// Cart Functions with Enhanced Error Handling and Bug Fixes
+
+// Fixed Unicode issue in success message
 async function addToCart(productId) {
     console.log('Adding product to cart:', productId);
     
@@ -40,14 +42,27 @@ async function loadCart() {
     
     if (!currentUser) {
         console.log('No user logged in, cannot load cart');
-        document.getElementById('cart-items').innerHTML = '<p>Please login to view your cart.</p>';
+        const cartItemsElement = document.getElementById('cart-items');
+        if (cartItemsElement) {
+            cartItemsElement.innerHTML = '<p>Please login to view your cart.</p>';
+        }
         return;
     }
     
     if (currentUser.is_admin) {
-        document.getElementById('cart-items').innerHTML = '<p>Admin users do not have shopping carts.</p>';
-        document.getElementById('cart-total').innerHTML = '';
-        document.getElementById('checkout-btn').style.display = 'none';
+        const cartItemsElement = document.getElementById('cart-items');
+        const cartTotalElement = document.getElementById('cart-total');
+        const checkoutBtnElement = document.getElementById('checkout-btn');
+        
+        if (cartItemsElement) {
+            cartItemsElement.innerHTML = '<p>Admin users do not have shopping carts.</p>';
+        }
+        if (cartTotalElement) {
+            cartTotalElement.innerHTML = '';
+        }
+        if (checkoutBtnElement) {
+            checkoutBtnElement.style.display = 'none';
+        }
         return;
     }
     
@@ -58,7 +73,10 @@ async function loadCart() {
         displayCart(cartData);
     } catch (error) {
         console.error('Error loading cart:', error);
-        document.getElementById('cart-items').innerHTML = '<p class="error">Error loading cart. Please try again.</p>';
+        const cartItemsElement = document.getElementById('cart-items');
+        if (cartItemsElement) {
+            cartItemsElement.innerHTML = '<p class="error">Error loading cart. Please try again.</p>';
+        }
     }
 }
 
@@ -69,6 +87,12 @@ function displayCart(cartData) {
     const cartTotal = document.getElementById('cart-total');
     const checkoutBtn = document.getElementById('checkout-btn');
     
+    // Add null checks for DOM elements
+    if (!cartItems) {
+        console.error('Cart items element not found');
+        return;
+    }
+    
     if (!cartData || !cartData.items || cartData.items.length === 0) {
         cartItems.innerHTML = `
             <div class="empty-cart">
@@ -77,8 +101,8 @@ function displayCart(cartData) {
                 <button onclick="showSection('products')" class="btn-primary">Continue Shopping</button>
             </div>
         `;
-        cartTotal.innerHTML = '';
-        checkoutBtn.style.display = 'none';
+        if (cartTotal) cartTotal.innerHTML = '';
+        if (checkoutBtn) checkoutBtn.style.display = 'none';
         return;
     }
     
@@ -90,7 +114,7 @@ function displayCart(cartData) {
         
         try {
             const product = item.product;
-            const subtotal = item.subtotal || 0;
+            const subtotal = parseFloat(item.subtotal || 0);
             total += subtotal;
             
             if (!product) {
@@ -101,25 +125,30 @@ function displayCart(cartData) {
                     </div>
                 `;
             } else {
+                // Fix price parsing and null checks
+                const price = parseFloat(product.price || 0);
+                const stock = parseInt(product.stock || 0);
+                const quantity = parseInt(item.quantity || 1);
+                
                 html += `
                     <div class="cart-item" data-cart-id="${item.id}">
                         <div class="cart-item-info">
                             <div class="product-details">
-                                <h4>${product.name || 'Unknown Product'}</h4>
-                                ${product.brand ? `<p class="product-brand">${product.brand}</p>` : ''}
-                                <p class="product-price">${parseFloat(product.price || 0).toFixed(2)} each</p>
-                                <p class="stock-info">Stock: ${product.stock || 0}</p>
+                                <h4>${escapeHtml(product.name || 'Unknown Product')}</h4>
+                                ${product.brand ? `<p class="product-brand">${escapeHtml(product.brand)}</p>` : ''}
+                                <p class="product-price">$${price.toFixed(2)} each</p>
+                                <p class="stock-info">Stock: ${stock}</p>
                             </div>
                             <div class="quantity-controls">
                                 <label>Quantity:</label>
-                                <button onclick="updateCartQuantity(${item.id}, ${item.quantity - 1})" 
-                                        class="quantity-btn" ${item.quantity <= 1 ? 'disabled' : ''}>-</button>
-                                <span class="quantity">${item.quantity}</span>
-                                <button onclick="updateCartQuantity(${item.id}, ${item.quantity + 1})" 
-                                        class="quantity-btn" ${item.quantity >= product.stock ? 'disabled' : ''}>+</button>
+                                <button onclick="updateCartQuantity(${item.id}, ${quantity - 1})" 
+                                        class="quantity-btn" ${quantity <= 1 ? 'disabled' : ''}>-</button>
+                                <span class="quantity">${quantity}</span>
+                                <button onclick="updateCartQuantity(${item.id}, ${quantity + 1})" 
+                                        class="quantity-btn" ${quantity >= stock ? 'disabled' : ''}>+</button>
                             </div>
                             <div class="cart-item-actions">
-                                <p class="subtotal">Subtotal: ${subtotal.toFixed(2)}</p>
+                                <p class="subtotal">Subtotal: $${subtotal.toFixed(2)}</p>
                                 <button onclick="removeFromCart(${item.id})" class="btn-danger btn-small">Remove</button>
                             </div>
                         </div>
@@ -131,7 +160,7 @@ function displayCart(cartData) {
             html += `
                 <div class="cart-item error-item">
                     <p class="error">Error displaying item</p>
-                    <button onclick="removeFromCart(${item.id})" class="btn-danger btn-small">Remove</button>
+                    <button onclick="removeFromCart(${item.id || 0})" class="btn-danger btn-small">Remove</button>
                 </div>
             `;
         }
@@ -141,22 +170,41 @@ function displayCart(cartData) {
     cartItems.innerHTML = html;
     
     // Display cart total
-    cartTotal.innerHTML = `
-        <div class="cart-summary">
-            <div class="cart-stats">
-                <p>Items in cart: ${cartData.count || 0}</p>
-                <p class="cart-total-amount">Total: ${total.toFixed(2)}</p>
+    if (cartTotal) {
+        cartTotal.innerHTML = `
+            <div class="cart-summary">
+                <div class="cart-stats">
+                    <p>Items in cart: ${cartData.count || 0}</p>
+                    <p class="cart-total-amount">Total: $${total.toFixed(2)}</p>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
     
-    checkoutBtn.style.display = total > 0 ? 'block' : 'none';
+    if (checkoutBtn) {
+        checkoutBtn.style.display = total > 0 ? 'block' : 'none';
+    }
     
-    console.log(`Cart displayed: ${cartData.items.length} items, total: ${total.toFixed(2)}`);
+    console.log(`Cart displayed: ${cartData.items.length} items, total: $${total.toFixed(2)}`);
+}
+
+// Helper function to escape HTML and prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 async function updateCartQuantity(cartId, newQuantity) {
     console.log(`Updating cart item ${cartId} to quantity ${newQuantity}`);
+    
+    // Fix: Ensure cartId is valid
+    if (!cartId || cartId <= 0) {
+        console.error('Invalid cart ID:', cartId);
+        alert('Invalid cart item. Please refresh the page.');
+        return;
+    }
     
     if (newQuantity <= 0) {
         removeFromCart(cartId);
@@ -167,7 +215,7 @@ async function updateCartQuantity(cartId, newQuantity) {
         const result = await apiCall(`/cart/${cartId}`, {
             method: 'PUT',
             body: JSON.stringify({
-                quantity: newQuantity
+                quantity: parseInt(newQuantity)
             })
         });
         
@@ -187,6 +235,13 @@ async function updateCartQuantity(cartId, newQuantity) {
 
 async function removeFromCart(cartId) {
     console.log('Removing item from cart:', cartId);
+    
+    // Fix: Ensure cartId is valid
+    if (!cartId || cartId <= 0) {
+        console.error('Invalid cart ID:', cartId);
+        alert('Invalid cart item. Please refresh the page.');
+        return;
+    }
     
     if (!confirm('Are you sure you want to remove this item from your cart?')) {
         return;
@@ -214,8 +269,14 @@ async function removeFromCart(cartId) {
 async function updateCartCount() {
     console.log('Updating cart count...');
     
+    const countElement = document.getElementById('cart-count');
+    if (!countElement) {
+        console.warn('Cart count element not found');
+        return;
+    }
+    
     if (!currentUser || currentUser.is_admin) {
-        document.getElementById('cart-count').textContent = '0';
+        countElement.textContent = '0';
         return;
     }
     
@@ -223,17 +284,21 @@ async function updateCartCount() {
         const cartData = await apiCall('/cart');
         console.log('Cart count data:', cartData);
         
-        const count = cartData && cartData.items ? cartData.items.reduce((total, item) => total + item.quantity, 0) : 0;
-        document.getElementById('cart-count').textContent = count;
+        const count = cartData && cartData.items ? 
+            cartData.items.reduce((total, item) => total + parseInt(item.quantity || 0), 0) : 0;
+        
+        countElement.textContent = count.toString();
         console.log('Cart count updated to:', count);
     } catch (error) {
         console.error('Error updating cart count:', error);
-        document.getElementById('cart-count').textContent = '0';
+        countElement.textContent = '0';
     }
 }
 
+// FIXED CHECKOUT FUNCTION with better error handling
 async function checkout() {
-    console.log('Starting checkout process...');
+    console.log('=== STARTING CHECKOUT PROCESS ===');
+    console.log('Current user:', currentUser);
     
     if (!currentUser) {
         alert('Please login to checkout');
@@ -245,59 +310,128 @@ async function checkout() {
         return;
     }
     
+    // Verify cart has items before confirming
+    try {
+        console.log('Checking cart contents before checkout...');
+        const cartCheck = await apiCall('/cart');
+        console.log('Cart check result:', cartCheck);
+        
+        if (!cartCheck || !cartCheck.items || cartCheck.items.length === 0) {
+            alert('Your cart is empty. Add some items before checking out.');
+            return;
+        }
+        
+        console.log(`Cart contains ${cartCheck.items.length} items`);
+    } catch (error) {
+        console.error('Error checking cart before checkout:', error);
+        alert('Error verifying cart contents. Please try again.');
+        return;
+    }
+    
     if (!confirm('Are you sure you want to place this order?')) {
+        console.log('User cancelled checkout');
         return;
     }
     
     // Disable checkout button to prevent double-clicks
     const checkoutBtn = document.getElementById('checkout-btn');
-    const originalText = checkoutBtn.textContent;
-    checkoutBtn.disabled = true;
-    checkoutBtn.textContent = 'Processing...';
+    const originalText = checkoutBtn ? checkoutBtn.textContent : 'Checkout';
+    if (checkoutBtn) {
+        checkoutBtn.disabled = true;
+        checkoutBtn.textContent = 'Processing...';
+    }
     
     try {
-        console.log('Making checkout API call...');
+        console.log('Making checkout API call to /orders...');
         const result = await apiCall('/orders', {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
         
         console.log('Checkout result:', result);
         
-        if (result.success) {
-            alert(`Order placed successfully! Order #${result.order_id}\nTotal: ${result.total_amount.toFixed(2)}`);
+        if (result && result.success) {
+            const orderId = result.order_id;
+            const totalAmount = parseFloat(result.total_amount || 0);
             
-            // Clear cart display and redirect
-            document.getElementById('cart-items').innerHTML = `
-                <div class="checkout-success">
-                    <h3>✅ Order Placed Successfully!</h3>
-                    <p>Order #${result.order_id}</p>
-                    <p>Total: ${result.total_amount.toFixed(2)}</p>
-                    <p>You can view your order status in the "My Orders" section.</p>
-                    <button onclick="showSection('orders')" class="btn-primary">View My Orders</button>
-                    <button onclick="showSection('products')" class="btn-secondary">Continue Shopping</button>
-                </div>
-            `;
-            document.getElementById('cart-total').innerHTML = '';
-            checkoutBtn.style.display = 'none';
+            console.log(`Order placed successfully! Order ID: ${orderId}, Total: $${totalAmount}`);
+            
+            // Show success message - Fixed Unicode character
+            alert(`Order placed successfully!\nOrder #${orderId}\nTotal: $${totalAmount.toFixed(2)}`);
+            
+            // Clear cart display and show success
+            const cartItems = document.getElementById('cart-items');
+            const cartTotal = document.getElementById('cart-total');
+            
+            if (cartItems) {
+                cartItems.innerHTML = `
+                    <div class="checkout-success">
+                        <h3>✅ Order Placed Successfully!</h3>
+                        <p><strong>Order #${orderId}</strong></p>
+                        <p><strong>Total: $${totalAmount.toFixed(2)}</strong></p>
+                        <p>You can view your order status in the "My Orders" section.</p>
+                        <div class="success-actions">
+                            <button onclick="showSection('orders')" class="btn-primary">View My Orders</button>
+                            <button onclick="showSection('products')" class="btn-secondary">Continue Shopping</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (cartTotal) {
+                cartTotal.innerHTML = '';
+            }
+            
+            if (checkoutBtn) {
+                checkoutBtn.style.display = 'none';
+            }
             
             // Update cart count
-            updateCartCount();
+            await updateCartCount();
+            
         } else {
-            console.error('Checkout failed:', result.message);
-            alert('Checkout failed: ' + (result.message || 'Unknown error'));
+            console.error('Checkout failed:', result);
+            const errorMessage = (result && result.message) ? result.message : 'Unknown error occurred';
+            console.error('Error details:', errorMessage);
+            alert('Checkout failed: ' + errorMessage);
         }
     } catch (error) {
-        console.error('Checkout error:', error);
-        alert('Network error during checkout. Please try again.');
+        console.error('Checkout network error:', error);
+        console.error('Error stack:', error.stack);
+        
+        // More specific error handling
+        let errorMessage = 'Network error during checkout. Please try again.';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = 'Network connection error. Please check your internet connection and try again.';
+        } else if (error.status === 401) {
+            errorMessage = 'Your session has expired. Please log in again.';
+        } else if (error.status === 400) {
+            errorMessage = 'Invalid checkout data. Please refresh the page and try again.';
+        } else if (error.status === 500) {
+            errorMessage = 'Server error. Please try again later.';
+        }
+        
+        alert(errorMessage);
     } finally {
-        // Re-enable checkout button
-        checkoutBtn.disabled = false;
-        checkoutBtn.textContent = originalText;
+        // Always re-enable checkout button
+        if (checkoutBtn) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.textContent = originalText;
+        }
+        console.log('=== CHECKOUT PROCESS COMPLETED ===');
     }
 }
 
-// Clear cart function (utility)
+// Clear cart function with better error handling
 async function clearCart() {
+    if (!currentUser) {
+        alert('Please login first.');
+        return;
+    }
+    
     if (!confirm('Are you sure you want to clear your entire cart?')) {
         return;
     }
@@ -306,11 +440,13 @@ async function clearCart() {
         // Get all cart items and remove them one by one
         const cartData = await apiCall('/cart');
         
-        if (cartData && cartData.items) {
+        if (cartData && cartData.items && cartData.items.length > 0) {
             for (const item of cartData.items) {
-                await apiCall(`/cart/${item.id}`, {
-                    method: 'DELETE'
-                });
+                if (item.id) {
+                    await apiCall(`/cart/${item.id}`, {
+                        method: 'DELETE'
+                    });
+                }
             }
         }
         
@@ -323,13 +459,14 @@ async function clearCart() {
     }
 }
 
-// Debug function for cart
+// Enhanced Debug function for cart
 function debugCart() {
     console.log('=== CART DEBUG INFO ===');
     console.log('Current user:', currentUser);
     console.log('Cart items element:', document.getElementById('cart-items'));
     console.log('Cart total element:', document.getElementById('cart-total'));
     console.log('Checkout button:', document.getElementById('checkout-btn'));
+    console.log('API_BASE:', window.API_BASE);
     
     // Test cart API
     if (currentUser && !currentUser.is_admin) {
@@ -337,10 +474,14 @@ function debugCart() {
         apiCall('/cart')
             .then(data => {
                 console.log('Cart API test successful:', data);
+                console.log('Items in cart:', data.items ? data.items.length : 0);
             })
             .catch(error => {
                 console.error('Cart API test failed:', error);
             });
+            
+        // Test checkout API endpoint (without actually placing order)
+        console.log('API Base URL for checkout:', `${window.API_BASE || ''}/orders`);
     } else {
         console.log('No regular user logged in - cannot test cart API');
     }
@@ -355,13 +496,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners for cart-related elements
     const checkoutBtn = document.getElementById('checkout-btn');
-    if (checkoutBtn) {
+    if (checkoutBtn && !checkoutBtn.hasAttribute('data-listener')) {
         checkoutBtn.addEventListener('click', checkout);
+        checkoutBtn.setAttribute('data-listener', 'true');
+    }
+    
+    // Initialize cart count if user is logged in
+    if (typeof currentUser !== 'undefined' && currentUser) {
+        updateCartCount();
     }
 });
 
 // Export functions for use in other modules
-window.addToCart = addToCart;
-window.loadCart = loadCart;
-window.updateCartCount = updateCartCount;
-window.checkout = checkout;
+if (typeof window !== 'undefined') {
+    window.addToCart = addToCart;
+    window.loadCart = loadCart;
+    window.updateCartCount = updateCartCount;
+    window.checkout = checkout;
+    window.updateCartQuantity = updateCartQuantity;
+    window.removeFromCart = removeFromCart;
+    window.clearCart = clearCart;
+}
