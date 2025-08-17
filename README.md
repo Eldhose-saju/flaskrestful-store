@@ -1,3 +1,6 @@
+FLASKRESTFUL STORE
+
+
 A full-featured ecommerce web application built with Flask REST API backend and vanilla JavaScript frontend, featuring user authentication, shopping cart functionality, order management, and comprehensive admin controls.
 Features
 🛍️ Customer Features
