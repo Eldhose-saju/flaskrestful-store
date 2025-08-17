@@ -40,35 +40,6 @@ CSS3 - Responsive styling with modern features
 Vanilla JavaScript - No frameworks, pure JavaScript for functionality
 AJAX/Fetch API - Asynchronous communication with backend
 
-Project Structure
-FLASKRESTFUL-STORE/
-├── app.py                  # Main Flask application
-├── requirements.txt        # Python dependencies
-├── index.html             # Main HTML file
-├── static/
-│   ├── css/
-│   │   └── styles.css     # Application styles
-│   └── js/
-│       ├── config.js      # Configuration settings
-│       ├── api.js         # API communication functions
-│       ├── auth.js        # Authentication functions
-│       ├── products.js    # Product management functions
-│       ├── cart.js        # Shopping cart functions
-│       ├── orders.js      # Order management functions
-│       ├── admin.js       # Admin panel functions
-│       └── app.js         # Main application logic
-├── routes/
-│   ├── auth_routes.py     # Authentication API endpoints
-│   ├── product_routes.py  # Product API endpoints
-│   ├── cart_routes.py     # Shopping cart API endpoints
-│   ├── order_routes.py    # Order management API endpoints
-│   ├── user_routes.py     # User management API endpoints
-│   └── debug_routes.py    # Debug and testing endpoints
-├── database/
-│   ├── db_init.py         # Database initialization
-│   ├── ecommerce.db       # Main SQLite database
-│   └── products.db        # Products SQLite database
-└── README.md              # This file
 Installation & Setup
 Prerequisites
 
