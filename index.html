@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Ecommerce Store</title>
+    <title>Advanced Ecommerce Store</title>
     <link rel="stylesheet" href="static/css/styles.css">
 </head>
 <body>
@@ -68,9 +68,71 @@
             </div>
         </div>
         
-        <!-- Products Section -->
+        <!-- Products Section with Search -->
         <div id="products-section" class="section hidden">
             <h2>Products</h2>
+            
+            <!-- Search and Filter Section -->
+            <div class="search-filters">
+                <div class="search-bar">
+                    <input type="text" id="product-search" placeholder="Search products..." class="search-input">
+                    <button onclick="searchProducts()" class="btn-primary">Search</button>
+                    <button onclick="clearFilters()" class="btn-secondary">Clear Filters</button>
+                </div>
+                
+                <div class="filters-row">
+                    <div class="filter-group">
+                        <label for="category-filter">Category:</label>
+                        <select id="category-filter">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="brand-filter">Brand:</label>
+                        <select id="brand-filter">
+                            <option value="">All Brands</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="min-price">Min Price:</label>
+                        <input type="number" id="min-price" placeholder="0" min="0" step="0.01">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="max-price">Max Price:</label>
+                        <input type="number" id="max-price" placeholder="9999" min="0" step="0.01">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="featured-filter" class="checkbox-label">
+                            <input type="checkbox" id="featured-filter"> Featured Only
+                        </label>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="sort-select">Sort by:</label>
+                        <select id="sort-select">
+                            <option value="name">Name A-Z</option>
+                            <option value="price_asc">Price: Low to High</option>
+                            <option value="price_desc">Price: High to Low</option>
+                            <option value="newest">Newest First</option>
+                            <option value="featured">Featured First</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="quick-filters">
+                    <button onclick="showFeaturedProducts()" class="quick-filter-btn">Featured Products</button>
+                    <button onclick="showCategory('Electronics')" class="quick-filter-btn">Electronics</button>
+                    <button onclick="showCategory('Clothing')" class="quick-filter-btn">Clothing</button>
+                    <button onclick="sortProducts('price_asc')" class="quick-filter-btn">Best Deals</button>
+                </div>
+                
+                <div id="product-stats" class="product-stats"></div>
+            </div>
+            
             <div id="products-grid" class="product-grid"></div>
         </div>
         
@@ -90,6 +152,11 @@
         
         <!-- Admin Section -->
         <div id="admin-section" class="section hidden">
+            <h2>Admin Dashboard</h2>
+            <div class="admin-welcome">
+                <p>Welcome to the Admin Dashboard. You have full access to manage products, orders, and users.</p>
+            </div>
+            
             <div class="tab-buttons">
                 <button class="tab-button active" onclick="switchAdminTab('products')">Manage Products</button>
                 <button class="tab-button" onclick="switchAdminTab('orders')">View Orders</button>
@@ -140,6 +207,23 @@
             <div class="form-group">
                 <label>Category:</label>
                 <input type="text" id="product-category">
+            </div>
+            <div class="form-group">
+                <label>Brand:</label>
+                <input type="text" id="product-brand">
+            </div>
+            <div class="form-group">
+                <label>Tags (comma-separated):</label>
+                <input type="text" id="product-tags" placeholder="laptop,gaming,wireless">
+            </div>
+            <div class="form-group">
+                <label>Image URL:</label>
+                <input type="url" id="product-image-url">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="product-featured"> Featured Product
+                </label>
             </div>
             <div style="margin-top: 1rem;">
                 <button class="btn-primary" onclick="saveProduct()">Save</button>
