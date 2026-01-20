@@ -28,6 +28,13 @@ class ProductsResource(Resource):
         featured = request.args.get('featured', type=bool)
         sort_by = request.args.get('sort', 'name')  # name, price_asc, price_desc, newest
         
+        # Pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 12, type=int)
+        if per_page > 50:  # Limit max per page
+            per_page = 50
+        offset = (page - 1) * per_page
+        
         # Build dynamic query
         where_conditions = []
         params = []
@@ -73,9 +80,15 @@ class ProductsResource(Resource):
             'featured': 'ORDER BY featured DESC, name ASC'
         }.get(sort_by, 'ORDER BY name ASC')
         
-        # Execute query
-        query = f'SELECT * FROM products {where_clause} {order_clause}'
+        # Execute query with pagination
+        query = f'SELECT * FROM products {where_clause} {order_clause} LIMIT ? OFFSET ?'
+        params.append(per_page)
+        params.append(offset)
         products = conn.execute(query, params).fetchall()
+        
+        # Get total count for pagination
+        count_query = f'SELECT COUNT(*) FROM products {where_clause}'
+        total_products = conn.execute(count_query, params[:-2]).fetchone()[0]  # Remove LIMIT and OFFSET params
         
         # Get filter options for frontend
         categories = conn.execute('SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category').fetchall()
@@ -89,7 +102,12 @@ class ProductsResource(Resource):
                 'categories': [cat['category'] for cat in categories],
                 'brands': [brand['brand'] for brand in brands]
             },
-            'total': len(products)
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total_products,
+                'total_pages': (total_products + per_page - 1) // per_page  # Ceiling division
+            }
         }
         
         return result

@@ -2,6 +2,7 @@ from flask import request, session
 from flask_restful import Resource
 from database.db_init import get_db_connection, get_products_db_connection
 import traceback
+from .notifications_routes import create_order_notification, create_admin_notification
 
 class OrdersResource(Resource):
     def get(self, order_id=None):
@@ -236,6 +237,13 @@ class OrdersResource(Resource):
                 print(f"=== ORDER {order_id} COMPLETED SUCCESSFULLY ===")
                 print(f"Total amount: ${total_amount}")
                 print(f"Items ordered: {len(validated_items)}")
+                
+                # Create notifications
+                create_order_notification(user_id, order_id, total_amount)
+                create_admin_notification(
+                    'New Order Received',
+                    f'Order #{order_id} placed by user {user_id}. Total: ${total_amount:.2f}'
+                )
                 
                 return {
                     'success': True, 
