@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_file
 from flask_restful import Api
 from flask_cors import CORS
 from datetime import timedelta
@@ -30,6 +30,11 @@ api.add_resource(ReviewsResource, '/api/reviews', '/api/reviews/<int:review_id>'
 api.add_resource(NotificationsResource, '/api/notifications', '/api/notifications/<int:notification_id>')
 api.add_resource(OrdersResource, '/api/orders', '/api/orders/<int:order_id>')  # Added order_id route
 api.add_resource(UsersResource, '/api/users', '/api/users/<int:user_id>')      # Added user_id route
+
+# Serve the main HTML file
+@app.route('/')
+def index():
+    return send_file('index.html')
 
 if __name__ == '__main__':
     init_db()
