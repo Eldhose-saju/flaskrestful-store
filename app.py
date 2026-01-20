@@ -8,7 +8,9 @@ from routes.product_routes import ProductsResource
 from routes.cart_routes import CartResource
 from routes.order_routes import OrdersResource
 from routes.user_routes import UsersResource
-from routes.debug_routes import register_debug_routes
+from routes.wishlist_routes import WishlistResource
+from routes.reviews_routes import ReviewsResource
+from routes.notifications_routes import NotificationsResource
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
@@ -23,11 +25,11 @@ api = Api(app)
 api.add_resource(AuthResource, '/api/auth')
 api.add_resource(ProductsResource, '/api/products', '/api/products/<int:product_id>')
 api.add_resource(CartResource, '/api/cart', '/api/cart/<int:cart_id>')
+api.add_resource(WishlistResource, '/api/wishlist', '/api/wishlist/<int:wishlist_id>')
+api.add_resource(ReviewsResource, '/api/reviews', '/api/reviews/<int:review_id>')
+api.add_resource(NotificationsResource, '/api/notifications', '/api/notifications/<int:notification_id>')
 api.add_resource(OrdersResource, '/api/orders', '/api/orders/<int:order_id>')  # Added order_id route
 api.add_resource(UsersResource, '/api/users', '/api/users/<int:user_id>')      # Added user_id route
-
-# Register debug routes
-register_debug_routes(app)
 
 if __name__ == '__main__':
     init_db()
