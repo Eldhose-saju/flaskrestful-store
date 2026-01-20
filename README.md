@@ -1,14 +1,17 @@
 #FLASKRESTFUL STORE
 
 
-A full-featured ecommerce web application built with Flask REST API backend and vanilla JavaScript frontend, featuring user authentication, shopping cart functionality, order management, and comprehensive admin controls.
+A full-featured ecommerce web application built with Flask REST API backend and vanilla JavaScript frontend, featuring user authentication, shopping cart functionality, order management, wishlist, product reviews, notifications, and comprehensive admin controls.
 Features
 #Customer Features
 
 User Registration & Authentication - Secure user registration and login system
-Product Browsing - Browse products with search, filtering, and sorting capabilities
+Product Browsing - Browse products with search, filtering, sorting, and pagination
 Shopping Cart - Add, update, and remove items from cart
+Wishlist - Save favorite products for later
+Product Reviews & Ratings - Rate and review purchased products
 Order Management - Place orders, view order history, and track order status
+Notifications - Receive notifications about orders and updates
 Product Search & Filters - Search by name, filter by category/brand, price range, and featured products
 
 # Admin Features
@@ -25,6 +28,10 @@ RESTful API - Clean API design with proper HTTP methods
 Session-based Authentication - Secure session management
 Role-based Access Control - Separate admin and customer interfaces
 Real-time Cart Updates - Dynamic cart count and total updates
+Product Pagination - Efficient browsing with paginated results
+Wishlist Management - Save and manage favorite products
+Review System - User-generated ratings and reviews
+Notification System - Real-time notifications for orders and updates
 Responsive Design - Works on desktop and mobile devices
 Error Handling - Comprehensive error handling and user feedback
 
@@ -175,13 +182,26 @@ POST /api/orders - Place new order
 PUT /api/orders/<id> - Update order status (Admin only)
 DELETE /api/orders/<id> - Cancel order
 
-Users
+Wishlist
 
-GET /api/users - Get all users (Admin only)
-GET /api/users/<id> - Get specific user (Admin only)
-POST /api/users - Create new user (Admin only)
-PUT /api/users/<id> - Update user (Admin only)
-DELETE /api/users/<id> - Delete user (Admin only)
+GET /api/wishlist - Get user's wishlist
+POST /api/wishlist - Add item to wishlist
+DELETE /api/wishlist/<id> - Remove item from wishlist
+
+Reviews
+
+GET /api/reviews - Get reviews (with optional product_id filter)
+GET /api/reviews/<id> - Get specific review
+POST /api/reviews - Create/update review
+PUT /api/reviews/<id> - Update review
+DELETE /api/reviews/<id> - Delete review
+
+Notifications
+
+GET /api/notifications - Get user's notifications
+POST /api/notifications - Create notification (Admin only)
+PUT /api/notifications/<id> - Mark as read/unread
+DELETE /api/notifications/<id> - Delete notification
 
 Debug/Testing
 
